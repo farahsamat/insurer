@@ -1,0 +1,15 @@
+{%extends 'base.html' %}
+
+{% block content %}
+
+    <h1>Policy Page</h1>
+        <form method="POST" action="/policy">
+        {% csrf_token %}
+        <input type="text" name="user_id" placeholder="External User ID">
+        <input type="text" name="benefit" placeholder="Benefit">
+        <input type="text" name="currency" placeholder="Currency">
+        <input type="number" name="total_max" placeholder="Total Max Amount">
+        <button type="submit">Submit</button>
+        </form>
+
+{% endblock %}
