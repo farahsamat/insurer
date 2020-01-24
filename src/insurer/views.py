@@ -20,7 +20,7 @@ def policy_list(request):
 
 def add_policy(request):
     if request.method == 'POST':
-        response = requests.get('http://127.0.0.1:8000/policy-list')
+        response = requests.get('http://127.0.0.1:8000/insurer/policy-list')
         data = response.json()
         user_id = (request.POST.get('user_id', None)).lower()
         benefit = (request.POST.get('benefit', None)).lower()
@@ -55,10 +55,10 @@ def payment_list(request):
         return render(request, 'payment.html')
 
 def make_payment(request):
-    pay_r = requests.get('http://127.0.0.1:8000/payment-list')
+    pay_r = requests.get('http://127.0.0.1:8000/insurer/payment-list')
     payment_data = pay_r.json()
 
-    pol_r = requests.get('http://127.0.0.1:8000/policy-list')
+    pol_r = requests.get('http://127.0.0.1:8000/insurer/policy-list')
     pol_data = pol_r.json()
 
     if request.method == 'POST':
