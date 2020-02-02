@@ -4,10 +4,13 @@ from .models import Policy, Payment
 from .serializers import PolicySerializer, PaymentSerializer
 import requests
 import datetime
+import string
+import re
 
+chars = re.escape(string.punctuation)
 
-def index(request):
-    return render(request, 'index.html')
+def home(request):
+    return render(request, 'home.html')
 
 def policy_list(request):
     if request.method == 'GET':
@@ -20,31 +23,30 @@ def policy_list(request):
 
 def add_policy(request):
     if request.method == 'POST':
-        response = requests.get('http://127.0.0.1:8000/insurer/policy-list')
-        data = response.json()
-        user_id = (request.POST.get('user_id', None)).lower()
-        benefit = (request.POST.get('benefit', None)).lower()
-        currency = (request.POST.get('currency', None)).lower()
-        total_max = int(request.POST.get('total_max', None))
+        policy_url = 'http://127.0.0.1:8000/policy-list'
+        data = requests.get(policy_url).json()
 
-        for record in data:
-            if record["external_user_id"].lower() == user_id and record["benefit"].lower() == benefit and \
-                    record["currency"].lower() == currency:
-                return HttpResponse("policy exists")
-            elif len(data)==0:
-                update = Policy(external_user_id=user_id, benefit=benefit, currency=currency,
-                                total_max_amount=total_max)
-                update.save()
-                return HttpResponse("policy added")
-            else:
-                update = Policy(external_user_id=user_id, benefit=benefit, currency=currency,
-                                total_max_amount=total_max)
-                update.save()
-                return HttpResponse("policy added")
+        #get user input
+        user_id = request.POST.get('user_id', None).lower()
+        benefit = request.POST.get('benefit', None).lower()
+        currency = request.POST.get('currency', None).lower()
+        total_max = int(request.POST.get('total_max', None))
+        policy_query = user_id+benefit+currency
+        existing_policy = [record["external_user_id"].lower()+record["benefit"].lower()+record["currency"].lower() for record in data]
+
+        if policy_query not in existing_policy:
+            update = Policy(external_user_id=user_id, benefit=benefit, currency=currency,
+                            total_max_amount=total_max)
+            update.save()
+            return HttpResponse("policy added")
+
+        else:
+            return HttpResponse("policy exists")
 
     else:
         return render(request, 'policy.html')
 
+####PAYMENT####
 def payment_list(request):
     if request.method == 'GET':
         payment = Payment.objects.all()
@@ -55,50 +57,57 @@ def payment_list(request):
         return render(request, 'payment.html')
 
 def make_payment(request):
-    pay_r = requests.get('http://127.0.0.1:8000/insurer/payment-list')
-    payment_data = pay_r.json()
-
-    pol_r = requests.get('http://127.0.0.1:8000/insurer/policy-list')
-    pol_data = pol_r.json()
-
     if request.method == 'POST':
+        policy_url = 'http://127.0.0.1:8000/policy-list'
+        policy_data = requests.get(policy_url).json()
+
+        payment_url = 'http://127.0.0.1:8000/payment-list'
+        payment_data = requests.get(payment_url).json()
+
+        #user input
         user_id = request.POST.get('user_id', None).lower()
         benefit = request.POST.get('benefit', None).lower()
         currency = request.POST.get('currency', None).lower()
         amount = int(request.POST.get('amount', None))
+
+        policy_query = user_id + benefit + currency
         prev_authorized_claim = 0
-        total_max = 0
 
-        for policy, payment in zip(pol_data, payment_data):
-            if payment["authorization"]=='true' and payment["external_user_id"].lower() == user_id and payment["benefit"].lower() == benefit and payment["currency"].lower() == currency:
-                if policy["external_user_id"].lower() == payment["external_user_id"].lower() and policy["benefit"].lower() == payment["benefit"].lower() and policy["currency"].lower() == payment["currency"].lower() and payment:
-                    prev_authorized_claim += payment["amount"]
-                    total_max = policy["total_max_amount"]
+        for policy_record in policy_data:
+            if policy_query == policy_record["external_user_id"].lower() + policy_record["benefit"].lower() + policy_record["currency"].lower():
+                total_max = policy_record["total_max_amount"]
 
-            elif payment["authorization"]=='false' and payment["external_user_id"].lower() == user_id and payment["benefit"].lower() == benefit and payment["currency"].lower() == currency:
-                if policy["external_user_id"].lower() == payment["external_user_id"].lower() and policy["benefit"].lower() == payment["benefit"].lower() and policy["currency"].lower() == payment["currency"].lower() and payment:
-                    prev_authorized_claim += 0
-                    total_max = policy["total_max_amount"]
+                for payment_record in payment_data:
+                    if payment_record["authorization"] == 'true':
+                        prev_authorized_claim += payment_record["amount"]
+                    elif payment_record["authorization"] == 'false':
+                        prev_authorized_claim += 0
+                    else:
+                        prev_authorized_claim += 0
+
+                    total_claim = prev_authorized_claim + amount
+
+                    if total_claim <= total_max:
+                        authorization = 'true'
+                        # update payment database
+                        update = Payment(external_user_id=user_id, benefit=benefit, currency=currency,
+                                         amount=amount, authorization=authorization,
+                                         timestamp=datetime.datetime.utcnow().replace(
+                                             tzinfo=datetime.timezone.utc).isoformat())
+                        update.save()
+                        return HttpResponse("Payment successful")
+
+                    elif total_claim >= total_max:
+                        authorization = 'false'
+                        # update payment database
+                        update = Payment(external_user_id=user_id, benefit=benefit, currency=currency,
+                                         amount=amount, authorization=authorization,
+                                         timestamp=datetime.datetime.utcnow().replace(
+                                             tzinfo=datetime.timezone.utc).isoformat())
+                        update.save()
+                        return HttpResponse("POLICY_AMOUNT_EXCEEDED")
             else:
-                return HttpResponse("policy does not exist")
-
-        total_claim = prev_authorized_claim + amount
-        if total_claim <= total_max:
-            authorization = 'true'
-            #update payment database
-            update = Payment(external_user_id=user_id, benefit=benefit, currency=currency,
-                            amount=amount, authorization=authorization, timestamp=datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat())
-            update.save()
-            return HttpResponse("Payment successful")
-
-        elif total_claim >= total_max:
-            authorization = 'false'
-            #update payment database
-            update = Payment(external_user_id=user_id, benefit=benefit, currency=currency,
-                            amount=amount, authorization=authorization,
-                            timestamp=datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat())
-            update.save()
-            return HttpResponse("Exceeds total max amount")
+                return HttpResponse("POLICY_NOT_FOUND")
 
     else:
         return render(request, 'payment.html')
