@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'behave_django',
     'insurer',
-    'payroll',
 ]
 
 MIDDLEWARE = [
