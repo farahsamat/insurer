@@ -4,7 +4,7 @@ from django.db import models
 AUTHORIZATION = [("true", "true"), ("false","false")]
 
 class Policy(models.Model):
-    external_user_id = models.CharField(max_length=50)
+    external_user_id = models.CharField(max_length=50, )
     benefit = models.CharField(max_length=50)
     currency = models.CharField(max_length=50)
     total_max_amount = models.IntegerField()

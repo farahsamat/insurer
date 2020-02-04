@@ -1,15 +1,16 @@
-{%extends 'base.html' %}
-
-{% block content %}
-
-    <h1>Payment Page</h1>
-    <form method="POST" action="/payment">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ABC Services</title>
+</head>
+<h1>Payment Page</h1>
+<form method="POST" action="/payment">
     {% csrf_token %}
-    <input type="text" name="user_id" placeholder="External User ID">
-    <input type="text" name="benefit" placeholder="Benefit">
-    <input type="text" name="currency" placeholder="Currency">
-    <input type="number" name="amount" placeholder="Amount">
-    <button type="submit">Submit</button>
-    </form>
+        <input type="text" name="user_id" placeholder="External User ID">
+        <input type="text" name="benefit" placeholder="Benefit">
+        <input type="text" name="currency" placeholder="Currency">
+        <input type="number" name="amount" placeholder="Amount">
+        <button type="submit">Submit</button>
+</form>
 
-{% endblock %}
