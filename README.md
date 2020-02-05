@@ -109,9 +109,12 @@ In the working directory `src` directory, run `python manage.py runserver` and g
  * [for payments](http://127.0.0.1:8000/payment)
  
 ## Future work
-Reformat codes to comply with the supplied [behavior test](https://github.com/farahsamat/insurer/tree/master/src/features). Current error:
+Reformat codes to comply with the supplied [behavior test](https://github.com/farahsamat/insurer/tree/master/src/features).
+
+Current error:
 
 `policy_query = simplify(user_id+benefit+currency)`
+
  `TypeError: unsupported operand type(s) for +: 'NoneType' and 'NoneType'`
 
 
