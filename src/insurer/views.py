@@ -2,12 +2,11 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from .models import Policy, Payment
 from .serializers import PolicySerializer, PaymentSerializer
-import requests
 import datetime
-
+import json
 
 def simplify(text):
-    return (''.join(e for e in text if e.isalnum())).lower()
+    return text.lower()
 
 
 def home(request):
@@ -26,25 +25,26 @@ def policy_list(request):
 
 def add_policy(request):
     if request.method == 'POST':
-        policy_url = 'http://127.0.0.1:8000/policy-list'
-        policy_data = requests.get(policy_url).json()
+        policy = Policy.objects.all()
+        policy_serializer = PolicySerializer(policy, many=True)
+        policy_data = json.loads(JsonResponse(policy_serializer.data, safe=False).content)
 
         #get user input
-        user_id = request.POST.get('user_id', None)
-        benefit = request.POST.get('benefit', None)
-        currency = request.POST.get('currency', None)
-        total_max = int(request.POST.get('total_max', None))
+        user_id = request.POST.get('user_id')
+        benefit = request.POST.get('benefit')
+        currency = request.POST.get('currency')
+        total_max = request.POST.get('total_max')
         policy_query = simplify(user_id+benefit+currency)
         policy_ids = [simplify(record["external_user_id"]+record["benefit"]+record["currency"]) for record in policy_data]
 
         if policy_query not in policy_ids:
             update = Policy(external_user_id=user_id, benefit=benefit, currency=currency,
-                            total_max_amount=total_max)
+                            total_max_amount=int(total_max))
             update.save()
-            return HttpResponse("policy added")
+            return HttpResponse("POLICY_ADDED")
 
         else:
-            return HttpResponse("policy exists")
+            return HttpResponse("POLICY_EXISTS")
 
     else:
         return render(request, 'policy.html')
@@ -62,19 +62,21 @@ def payment_list(request):
 
 def make_payment(request):
     if request.method == 'POST':
-        policy_url = 'http://127.0.0.1:8000/policy-list'
-        policy_data = requests.get(policy_url).json()
-        payment_url = 'http://127.0.0.1:8000/payment-list'
-        payment_data = requests.get(payment_url).json()
+        payment = Payment.objects.all()
+        payment_serializer = PaymentSerializer(payment, many=True)
+        payment_data = json.loads(JsonResponse(payment_serializer.data, safe=False).content)
+
+        policy = Policy.objects.all()
+        policy_serializer = PolicySerializer(policy, many=True)
+        policy_data = json.loads(JsonResponse(policy_serializer.data, safe=False).content)
 
         #user input
         user_id = request.POST.get('user_id', None)
         benefit = request.POST.get('benefit', None)
         currency = request.POST.get('currency', None)
-        amount = int(request.POST.get('amount', None))
+        amount = request.POST.get('amount', None)
         policy_query = simplify(user_id+benefit+currency)
         prev_authorized_claim = 0
-        total_max = 0
 
         for policy_record in policy_data:
             if policy_query == simplify(policy_record["external_user_id"]+policy_record["benefit"]+policy_record["currency"]):
@@ -86,22 +88,23 @@ def make_payment(request):
                     elif policy_query == simplify(payment_record["external_user_id"]+payment_record["benefit"]+payment_record["currency"]) and payment_record["authorization"] == 'false':
                         prev_authorized_claim += 0
 
-                total_claim = prev_authorized_claim + amount
+                total_claim = prev_authorized_claim + int(amount)
 
                 if total_claim <= total_max:
                     authorization = 'true'
                     # update payment database
                     update = Payment(external_user_id=user_id, benefit=benefit, currency=currency,
-                                     amount=amount, authorization=authorization,
+                                     amount=int(amount), authorization=authorization,
                                      timestamp=datetime.datetime.utcnow().replace(
                                          tzinfo=datetime.timezone.utc).isoformat())
                     update.save()
                     return HttpResponse("Payment successful")
+
                 elif total_claim >= total_max:
                     authorization = 'false'
                     # update payment database
                     update = Payment(external_user_id=user_id, benefit=benefit, currency=currency,
-                                     amount= amount, authorization=authorization,
+                                     amount= int(amount), authorization=authorization,
                                      timestamp=datetime.datetime.utcnow().replace(
                                          tzinfo=datetime.timezone.utc).isoformat())
                     update.save()

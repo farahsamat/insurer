@@ -109,7 +109,11 @@ In the working directory `src` directory, run `python manage.py runserver` and g
  * [for payments](http://127.0.0.1:8000/payment)
  
 ## Future work
-Fix errors in `views.py` i.e. `make_payment` view.
+Reformat codes to comply with the supplied [behavior test](https://github.com/farahsamat/insurer/tree/master/src/features). Current error:
+
+`policy_query = simplify(user_id+benefit+currency)`
+ `TypeError: unsupported operand type(s) for +: 'NoneType' and 'NoneType'`
+
 
 ## Reference
 [Getting Started With Django - Pamela Statz](https://www.wired.com/2010/02/get_started_with_django/)
